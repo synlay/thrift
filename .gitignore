@@ -159,7 +159,6 @@ gen-*
 /lib/erl/ebin
 /lib/erl/deps/
 /lib/erl/src/thrift.app.src
-/lib/erl/test/*.erl
 /lib/erl/test/*.hrl
 /lib/erl/test/*.beam
 /lib/hs/dist
