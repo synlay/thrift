@@ -18,16 +18,18 @@
 #
 
 THRIFT = ../../compiler/cpp/thrift
-THRIFT_TUTORIAL = ../tutorial.thrift
-THRIFT_TUTORIAL_SRC = gen-cocoa/tutorial.m gen-cocoa/shared.m
+THRIFT_TUTORIAL = ../tutorial.thrift multiplexing.thrift
+THRIFT_TUTORIAL_SRC = gen-cocoa/tutorial.m gen-cocoa/shared.m gen-cocoa/multiplexing.m
 COCOA_BUILD_CONFIG = Release
 
 all: $(TUTORIAL_SRC) CocoaServer CocoaClient
 
 $(THRIFT_TUTORIAL_SRC): $(THRIFT_TUTORIAL)
-	@$(THRIFT) --gen cocoa -r $<
+	@for file in $? ; do \
+		$(THRIFT) --gen cocoa -r $$file ; \
+	done
 
-CocoaClient CocoaServer: $(THRIFT_TUTORIAL_SRC)
+CocoaClient CocoaServer CocoaMultiplexedClient: $(THRIFT_TUTORIAL_SRC)
 	@xcodebuild -target $@ -configuration $(COCOA_BUILD_CONFIG)
 
 tutorialserver: CocoaServer
@@ -38,6 +40,9 @@ tutorialclient: CocoaClient
 
 tutorialclient_ssl: CocoaClient
 	./build/$(COCOA_BUILD_CONFIG)/$< -ssl
+
+tutorialclient_multiplexed: CocoaMultiplexedClient
+	./build/$(COCOA_BUILD_CONFIG)/$<
 
 clean:
 	@$(RM) -r gen-*
