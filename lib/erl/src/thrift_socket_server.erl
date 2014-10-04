@@ -37,7 +37,8 @@
 
 -record(thrift_socket_server,
         {port,
-         service,
+         service :: atom(),
+         service_name :: string(),
          handler,
          name,
          max=2048,
@@ -135,8 +136,8 @@ parse_options([{service, ServiceModulePropertyList} | Rest], State) when is_list
         _ -> throw("Error while parsing the service option.")
     end,
     parse_options(Rest, State#thrift_socket_server{service=ServiceModuleMap});
-parse_options([{service, Service} | Rest], State) when State#thrift_socket_server.service == undefined, is_atom(Service) ->
-    parse_options(Rest, State#thrift_socket_server{service=Service});
+parse_options([{service, ServiceName, Service} | Rest], State) when State#thrift_socket_server.service == undefined, is_list(ServiceName), is_atom(Service) ->
+    parse_options(Rest, State#thrift_socket_server{service=Service, service_name=ServiceName});
 
 parse_options([{max, Max} | Rest], State) ->
     MaxInt = case Max of
@@ -210,14 +211,14 @@ new_acceptor(State=#thrift_socket_server{max=0}) ->
     error_logger:error_msg("Not accepting new connections"),
     State#thrift_socket_server{acceptor=null};
 new_acceptor(State=#thrift_socket_server{listen=Listen,
-                                         service=Service, handler=Handler,
+                                         service=Service, service_name=ServiceName, handler=Handler,
                                          socket_opts=Opts, framed=Framed
                                         }) ->
     Pid = proc_lib:spawn_link(?MODULE, acceptor_loop,
-                              [{self(), Listen, Service, Handler, Opts, Framed}]),
+                              [{self(), Listen, Service, ServiceName, Handler, Opts, Framed}]),
     State#thrift_socket_server{acceptor=Pid}.
 
-acceptor_loop({Server, Listen, Service, Handler, SocketOpts, Framed})
+acceptor_loop({Server, Listen, Service, ServiceName, Handler, SocketOpts, Framed})
   when is_pid(Server), is_list(SocketOpts) ->
     case catch gen_tcp:accept(Listen) of % infinite timeout
         {ok, Socket} ->
@@ -232,7 +233,7 @@ acceptor_loop({Server, Listen, Service, Handler, SocketOpts, Framed})
                                {ok, Protocol}          = thrift_binary_protocol:new(Transport),
                                {ok, Protocol}
                        end,
-            thrift_processor:init({Server, ProtoGen, Service, Handler});
+            thrift_processor:init({Server, ProtoGen, Service, ServiceName, Handler});
         {error, closed} ->
             exit({error, closed});
         Other ->
